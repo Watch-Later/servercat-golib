@@ -4,6 +4,10 @@ import (
     "bytes"
     "crypto/ed25519"
     "crypto/rand"
+    "encoding/asn1"
+    "golang.org/x/crypto/ssh"
+    "log"
+
     //"crypto/rsa"
     "crypto/x509"
     //"encoding/asn1"
@@ -37,7 +41,7 @@ import (
 
 
 func GenerateEd25519PrivateKey() (string, string) {
-    _, priKey, err := ed25519.GenerateKey(rand.Reader)
+    pubKey, priKey, err := ed25519.GenerateKey(rand.Reader)
     if err != nil {
         panic(err)
         return "", ""
@@ -47,6 +51,36 @@ func GenerateEd25519PrivateKey() (string, string) {
         Passphrase: nil,
         Format:     sshkeys.FormatOpenSSHv1,
     })
+
+    println("marshaled pk", string(pk))
+
+    publicRsaKey, err := ssh.NewPublicKey(pubKey)
+    if err != nil {
+        panic(err)
+    }
+
+    pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
+
+    log.Println("Public key generated", string(pubKeyBytes))
+
+    asn1Bytes, err := asn1.Marshal(pubKey)
+    if err != nil {
+        panic(err)
+    }
+
+    var pemkey = &pem.Block{
+        Type:  "PUBLIC KEY",
+        Bytes: asn1Bytes,
+    }
+    s := pem.EncodeToMemory(pemkey)
+    println("pub key", string(s))
+
+    pubk, err := sshkeys.Marshal(pubKey, &sshkeys.MarshalOptions{
+        Passphrase: nil,
+        Format:     sshkeys.FormatOpenSSHv1,
+    })
+
+    println("marshaled pub", string(pubk))
 
     if err != nil {
         panic(err)
