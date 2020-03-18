@@ -1,53 +1,132 @@
-package keychain
+package golib
 
 import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
-	"golang.org/x/crypto/ssh"
-	"log"
-
-	//"crypto/rsa"
+	"crypto/rsa"
 	"crypto/x509"
-	//"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/ScaleFT/sshkeys"
+	"golang.org/x/crypto/ssh"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 )
 
-//func savePEMKey(key *rsa.PrivateKey) {
-//    var privateKey = &pem.Block{
-//        Type:  "PRIVATE KEY",
-//        Bytes: x509.MarshalPKCS1PrivateKey(key),
-//    }
-//}
-//
-//func savePublicPEMKey(fileName string, pubkey rsa.PublicKey) {
-//    asn1Bytes, err := asn1.Marshal(pubkey)
-//    checkError(err)
-//
-//    var pemkey = &pem.Block{
-//        Type:  "PUBLIC KEY",
-//        Bytes: asn1Bytes,
-//    }
-//    err = pem.Encode(pemfile, pemkey)
-//}
+type KeyPair struct {
+	PublicKey  string
+	PrivateKey string
+}
+
+type PrivateKey struct {
+	Valid           bool
+	PassphraseValid bool
+	KeyType         string
+	CipherName      string
+	Bytes           int
+	Encrypted       bool
+	Error 			string
+}
+
+
+func DetectKey(privateKeyPem, passphrase string) PrivateKey {
+	var err error
+
+	info := &PrivateKey{
+		Valid: true,
+	}
+	pemBytes := []byte(privateKeyPem)
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		info.Valid = false
+		info.Error = "No pem found"
+		return *info
+	}
+
+	var data []byte
+
+	if x509.IsEncryptedPEMBlock(block) {
+		info.Encrypted = true
+
+		data, err = x509.DecryptPEMBlock(block, []byte(passphrase))
+
+		if err == x509.IncorrectPasswordError {
+			info.PassphraseValid = false
+			return *info
+		}
+
+		if err != nil {
+			info.PassphraseValid = false
+			return *info
+		}
+
+	} else {
+		info.Encrypted = false
+		info.Bytes = len(block.Bytes)
+
+		data = block.Bytes
+	}
+
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		info.CipherName = "rsa"
+		_, err := x509.ParsePKCS1PrivateKey(data)
+		if err != nil {
+			info.PassphraseValid = false
+			return *info
+		}
+		return *info
+	case "EC PRIVATE KEY":
+		info.CipherName = "ecdsa"
+		return *info
+	case "DSA PRIVATE KEY":
+		info.CipherName = "dsa"
+		return *info
+	case "OPENSSH PRIVATE KEY":
+		pk, err := sshkeys.ParseEncryptedRawPrivateKey(pemBytes, []byte(passphrase))
+
+		if err != nil {
+			info.Valid = false
+			info.Error = err.Error()
+			return *info
+		}
+
+		switch pk.(type) {
+		case rsa.PrivateKey:
+			info.CipherName = "rsa"
+			return *info
+		case ed25519.PrivateKey:
+			info.CipherName = "ed25519"
+			return *info
+		default:
+			info.Valid = false
+			info.CipherName = "unknown"
+			info.Error = "Unknown key type"
+			return *info
+		}
+
+	default:
+		info.Valid = false
+		info.CipherName = "unknown"
+		info.Error = "Unknown key type"
+		return *info
+	}
+}
 
 func GenerateSSHAuthorizedKey(privateKeyPem string, passphrase string) (string, error) {
 	block, _ := pem.Decode([]byte(privateKeyPem))
 
 	if block == nil {
-		return "", errors.New("keychain: no key found")
+		return "", errors.New("golib: no key found")
 	}
 
 	println(block.Type)
 	pemBytes := []byte(privateKeyPem)
-
-	//buf := block.Bytes
 
 	pk, err := sshkeys.ParseEncryptedRawPrivateKey(pemBytes, []byte(passphrase))
 
@@ -68,11 +147,6 @@ func GenerateSSHAuthorizedKey(privateKeyPem string, passphrase string) (string, 
 	return "", nil
 }
 
-type KeyPair struct {
-	PublicKey  string
-	PrivateKey string
-}
-
 type HasPublicKey interface {
 	Public() crypto.PublicKey
 }
@@ -88,8 +162,6 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 		Format:     sshkeys.FormatOpenSSHv1,
 	})
 
-	println("marshaled pk", string(pk))
-
 	publicRsaKey, err := ssh.NewPublicKey(pubKey)
 	if err != nil {
 		return nil, err
@@ -104,16 +176,13 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 	}, nil
 }
 
-func GenerateEcKey() {
-}
-
 func ParsePrivateKey(pemString string, passPhrase string) {
 }
 
 func Parse() {
-	file, err := os.Open("../../.keychain/id_ed25519")
-	//file, err := os.Open("../../.keychain/id_ed25519_2")
-	//file, err := os.Open("../../.keychain/id_rsa")
+	file, err := os.Open("../../.golib/id_ed25519")
+	//file, err := os.Open("../../.golib/id_ed25519_2")
+	//file, err := os.Open("../../.golib/id_rsa")
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +194,7 @@ func Parse() {
 
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
-		panic(errors.New("keychain: no key found"))
+		panic(errors.New("golib: no key found"))
 	}
 
 	println(block.Type)
@@ -136,8 +205,8 @@ func Parse() {
 
 	_ = buf
 
-	//ik, err := keychain.ParseRawPrivateKey(pemBytes, )
-	//ik, err := keychain.ParseRawPrivateKeyWithPassphrase(pemBytes, passPhrase)
+	//ik, err := golib.ParseRawPrivateKey(pemBytes, )
+	//ik, err := golib.ParseRawPrivateKeyWithPassphrase(pemBytes, passPhrase)
 
 	if err != nil {
 		panic(err)
@@ -167,7 +236,7 @@ func Parse() {
 				if err == x509.IncorrectPasswordError {
 					panic(err)
 				}
-				panic(fmt.Errorf("keychain: cannot decode encrypted private keys: %v", err))
+				panic(fmt.Errorf("golib: cannot decode encrypted private keys: %v", err))
 			}
 		}
 	}

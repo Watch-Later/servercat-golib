@@ -1,10 +1,10 @@
 package main
 
-import "servercat.app/golib/keychain"
+import "servercat.app/golib/golib"
 
 func main() {
-    //keychain.Parse()
-    pk, pubKey := keychain.GenerateEd25519PrivateKey()
+    //golib.Parse()
+    pk, pubKey := golib.GenerateEd25519PrivateKey()
     println(pk)
     println(pubKey)
 
