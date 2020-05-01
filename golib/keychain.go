@@ -29,11 +29,10 @@ type PrivateKey struct {
 	CipherName      string
 	Bytes           int
 	Encrypted       bool
-	Error 			string
+	Error           string
 }
 
-
-func DetectKey(privateKeyPem, passphrase string) PrivateKey {
+func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
 	var err error
 
 	info := &PrivateKey{
@@ -45,7 +44,7 @@ func DetectKey(privateKeyPem, passphrase string) PrivateKey {
 	if block == nil {
 		info.Valid = false
 		info.Error = "No pem found"
-		return *info
+		return info
 	}
 
 	var data []byte
@@ -57,12 +56,12 @@ func DetectKey(privateKeyPem, passphrase string) PrivateKey {
 
 		if err == x509.IncorrectPasswordError {
 			info.PassphraseValid = false
-			return *info
+			return info
 		}
 
 		if err != nil {
 			info.PassphraseValid = false
-			return *info
+			return info
 		}
 
 	} else {
@@ -78,43 +77,43 @@ func DetectKey(privateKeyPem, passphrase string) PrivateKey {
 		_, err := x509.ParsePKCS1PrivateKey(data)
 		if err != nil {
 			info.PassphraseValid = false
-			return *info
+			return info
 		}
-		return *info
+		return info
 	case "EC PRIVATE KEY":
 		info.CipherName = "ecdsa"
-		return *info
+		return info
 	case "DSA PRIVATE KEY":
 		info.CipherName = "dsa"
-		return *info
+		return info
 	case "OPENSSH PRIVATE KEY":
 		pk, err := sshkeys.ParseEncryptedRawPrivateKey(pemBytes, []byte(passphrase))
 
 		if err != nil {
 			info.Valid = false
 			info.Error = err.Error()
-			return *info
+			return info
 		}
 
 		switch pk.(type) {
 		case rsa.PrivateKey:
 			info.CipherName = "rsa"
-			return *info
+			return info
 		case ed25519.PrivateKey:
 			info.CipherName = "ed25519"
-			return *info
+			return info
 		default:
 			info.Valid = false
 			info.CipherName = "unknown"
 			info.Error = "Unknown key type"
-			return *info
+			return info
 		}
 
 	default:
 		info.Valid = false
 		info.CipherName = "unknown"
 		info.Error = "Unknown key type"
-		return *info
+		return info
 	}
 }
 
@@ -141,7 +140,7 @@ func GenerateSSHAuthorizedKey(privateKeyPem string, passphrase string) (string, 
 			return "", nil
 		}
 		pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
-		return string(pubKeyBytes), nil
+		return strings.TrimSpace(string(pubKeyBytes)), nil
 	}
 
 	return "", nil
@@ -171,8 +170,8 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 
 	log.Println("Public key generated", string(pubKeyBytes))
 	return &KeyPair{
-		PublicKey:  string(pubKeyBytes),
-		PrivateKey: string(pk),
+		PublicKey:  strings.TrimSpace(string(pubKeyBytes)),
+		PrivateKey: strings.TrimSpace(string(pk)),
 	}, nil
 }
 
