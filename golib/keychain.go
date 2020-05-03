@@ -194,7 +194,7 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 		return nil, err
 	}
 
-	// sshkeys 生成的 openssh 密钥，ssh-keygen 不能识别
+	//sshkeys 生成的 openssh 密钥，ssh-keygen 不能识别
 	//privateKey, err := sshkeys.Marshal(priKey, &sshkeys.MarshalOptions{
 	//	Passphrase: nil,
 	//	Format:     sshkeys.FormatOpenSSHv1,

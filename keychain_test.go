@@ -2,7 +2,10 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"log"
+	"os"
+	"os/exec"
 	"servercat.app/golib/golib"
 	"strings"
 	"testing"
@@ -27,6 +30,8 @@ func TestGenerateRSAKey(t *testing.T) {
 	assert.NotNil(t, keyPair, "should not fail")
 	assert.True(t, strings.HasPrefix(keyPair.PublicKey, "ssh-rsa "))
 	assert.True(t, strings.HasPrefix(keyPair.PrivateKey, "-----BEGIN RSA PRIVATE KEY-----"))
+
+	matchSShKeyGen(t, keyPair.PrivateKey, keyPair.PublicKey)
 }
 
 func TestGenerateEd25519Key(t *testing.T) {
@@ -38,6 +43,8 @@ func TestGenerateEd25519Key(t *testing.T) {
 	assert.NotNil(t, keyPair, "should not fail")
 	assert.True(t, strings.HasPrefix(keyPair.PublicKey, "ssh-ed25519 "))
 	assert.True(t, strings.HasPrefix(keyPair.PrivateKey, "-----BEGIN OPENSSH PRIVATE KEY-----"))
+
+	matchSShKeyGen(t, keyPair.PrivateKey, keyPair.PublicKey)
 }
 
 func TestDetectRsaKey(t *testing.T) {
@@ -89,4 +96,25 @@ func TestKeyDetect(t *testing.T) {
 	assert.Equal(t, "", info.Error, "they should be equal")
 	assert.Equal(t, true, info.Valid, "they should be equal")
 	assert.Equal(t, "ed25519", info.CipherName, "they should be equal")
+}
+
+func matchSShKeyGen(t *testing.T, privPemString, publicAuth string) {
+	file, err := ioutil.TempFile("", "id_*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+
+	_, _ = file.WriteString(privPemString)
+	defer file.Close()
+
+	out, err := exec.Command("ssh-keygen",  "-y",  "-f", file.Name()).CombinedOutput()
+
+	pubStr := string(out)
+	if err != nil {
+		log.Println(pubStr)
+		log.Fatal(err)
+	}
+
+	assert.True(t, strings.HasPrefix(pubStr, publicAuth))
 }
