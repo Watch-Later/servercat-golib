@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ScaleFT/sshkeys"
+	"github.com/mikesmitty/edkey"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
@@ -193,10 +194,18 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 		return nil, err
 	}
 
-	pk, err := sshkeys.Marshal(priKey, &sshkeys.MarshalOptions{
-		Passphrase: nil,
-		Format:     sshkeys.FormatOpenSSHv1,
-	})
+	// sshkeys 生成的 openssh 密钥，ssh-keygen 不能识别
+	//privateKey, err := sshkeys.Marshal(priKey, &sshkeys.MarshalOptions{
+	//	Passphrase: nil,
+	//	Format:     sshkeys.FormatOpenSSHv1,
+	//})
+
+	// edkey 生成的 ssh-keygen 可以识别，但是末尾要有换行
+	pemKey := &pem.Block{
+		Type:  "OPENSSH PRIVATE KEY",
+		Bytes: edkey.MarshalED25519PrivateKey(priKey),
+	}
+	privateKey := pem.EncodeToMemory(pemKey)
 
 	publicRsaKey, err := ssh.NewPublicKey(pubKey)
 	if err != nil {
@@ -207,7 +216,7 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 
 	return &KeyPair{
 		PublicKey:  strings.TrimSpace(string(pubKeyBytes)),
-		PrivateKey: strings.TrimSpace(string(pk)),
+		PrivateKey: string(privateKey),
 	}, nil
 }
 
