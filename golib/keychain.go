@@ -12,7 +12,6 @@ import (
 	"github.com/ScaleFT/sshkeys"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 )
@@ -22,7 +21,7 @@ type KeyPair struct {
 	PrivateKey string
 }
 
-type PrivateKey struct {
+type KeyInfo struct {
 	Valid           bool
 	PassphraseValid bool
 	KeyType         string
@@ -32,10 +31,10 @@ type PrivateKey struct {
 	Error           string
 }
 
-func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
+func DetectKey(privateKeyPem string, passphrase string) *KeyInfo {
 	var err error
 
-	info := &PrivateKey{
+	info := &KeyInfo{
 		Valid: true,
 	}
 	pemBytes := []byte(privateKeyPem)
@@ -48,11 +47,18 @@ func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
 	}
 
 	var data []byte
+	var passphraseBytes []byte
+
+	if  passphrase == "" {
+		passphraseBytes = nil
+	} else {
+		passphraseBytes = []byte(passphrase)
+	}
 
 	if x509.IsEncryptedPEMBlock(block) {
 		info.Encrypted = true
 
-		data, err = x509.DecryptPEMBlock(block, []byte(passphrase))
+		data, err = x509.DecryptPEMBlock(block, passphraseBytes)
 
 		if err == x509.IncorrectPasswordError {
 			info.PassphraseValid = false
@@ -71,6 +77,8 @@ func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
 		data = block.Bytes
 	}
 
+	println("[debug] block type", block.Type)
+
 	switch block.Type {
 	case "RSA PRIVATE KEY":
 		info.CipherName = "rsa"
@@ -87,7 +95,7 @@ func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
 		info.CipherName = "dsa"
 		return info
 	case "OPENSSH PRIVATE KEY":
-		pk, err := sshkeys.ParseEncryptedRawPrivateKey(pemBytes, []byte(passphrase))
+		pk, err := sshkeys.ParseEncryptedRawPrivateKey(pemBytes, passphraseBytes)
 
 		if err != nil {
 			info.Valid = false
@@ -95,11 +103,14 @@ func DetectKey(privateKeyPem string, passphrase string) *PrivateKey {
 			return info
 		}
 
+		fmt.Printf("%T \n", pk)
+		//println(reflect.TypeOf(pk))
+
 		switch pk.(type) {
-		case rsa.PrivateKey:
+		case *rsa.PrivateKey:
 			info.CipherName = "rsa"
 			return info
-		case ed25519.PrivateKey:
+		case *ed25519.PrivateKey:
 			info.CipherName = "ed25519"
 			return info
 		default:
@@ -169,7 +180,6 @@ func GenerateRsaPrivateKey() (*KeyPair, error) {
 
 	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
 
-	log.Println("Public key generated", string(pubKeyBytes))
 	return &KeyPair{
 		PublicKey:  strings.TrimSpace(string(pubKeyBytes)),
 		PrivateKey: strings.TrimSpace(string(pk)),
@@ -195,7 +205,6 @@ func GenerateEd25519PrivateKey() (*KeyPair, error) {
 
 	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
 
-	log.Println("Public key generated", string(pubKeyBytes))
 	return &KeyPair{
 		PublicKey:  strings.TrimSpace(string(pubKeyBytes)),
 		PrivateKey: strings.TrimSpace(string(pk)),
@@ -238,14 +247,14 @@ func Parse() {
 		panic(err)
 	}
 
-	//pk := ik.(crypto.PrivateKey)
+	//pk := ik.(crypto.KeyInfo)
 	pk := ik.(ed25519.PrivateKey)
 
 	println(pk)
 
 	println(pk.Public())
 
-	//if !pk.(crypto.PrivateKey) {
+	//if !pk.(crypto.KeyInfo) {
 	//    panic(errors.New("Unknown"))
 	//}
 

@@ -19,14 +19,52 @@ cvV8fHxUzpJ7dPKhezgIYuzaatOJmoGeUMTVY=
 -----END OPENSSH PRIVATE KEY-----`
 
 
-func TestRSAPublicKey(t *testing.T) {
+func TestGenerateRSAKey(t *testing.T) {
 	keyPair, err := golib.GenerateRsaPrivateKey()
 	if err != nil  {
 		assert.Error(t, err)
 	}
 
 	assert.NotNil(t, keyPair, "should not fail")
+	assert.True(t, strings.HasPrefix(keyPair.PublicKey, "ssh-rsa "))
+	assert.True(t, strings.HasPrefix(keyPair.PrivateKey, "-----BEGIN RSA PRIVATE KEY-----"))
 }
+
+func TestGenerateEd25519Key(t *testing.T) {
+	keyPair, err := golib.GenerateEd25519PrivateKey()
+	if err != nil  {
+		assert.Error(t, err)
+	}
+
+	assert.NotNil(t, keyPair, "should not fail")
+	assert.True(t, strings.HasPrefix(keyPair.PublicKey, "ssh-ed25519 "))
+	assert.True(t, strings.HasPrefix(keyPair.PrivateKey, "-----BEGIN OPENSSH PRIVATE KEY-----"))
+}
+
+func TestDetectRsaKey(t *testing.T) {
+	keyPair, err := golib.GenerateRsaPrivateKey()
+	if err != nil  {
+		assert.Error(t, err)
+	}
+
+	info := golib.DetectKey(keyPair.PrivateKey, "")
+	assert.Equal(t, "", info.Error)
+	assert.Equal(t, true, info.Valid)
+	assert.Equal(t, "rsa", info.CipherName)
+}
+
+func TestDetectEdKey(t *testing.T) {
+	keyPair, err := golib.GenerateEd25519PrivateKey()
+	if err != nil  {
+		assert.Error(t, err)
+	}
+
+	info := golib.DetectKey(keyPair.PrivateKey, "")
+	assert.Equal(t, "", info.Error)
+	assert.Equal(t, true, info.Valid)
+	assert.Equal(t, "ed25519", info.CipherName)
+}
+
 
 func TestSSHPublicKey(t *testing.T) {
 	sshPubKey, err := golib.GenerateSSHAuthorizedKey(ed25519PrivateKey, "test")

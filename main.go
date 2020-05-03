@@ -14,5 +14,16 @@ func main() {
     println(key.PrivateKey)
     println("----")
 
+
+    rsa, err := golib.GenerateRsaPrivateKey()
+    if err != nil {
+        panic(err)
+    }
+    println("----")
+    println(rsa.PublicKey)
+    println("----")
+    println(rsa.PrivateKey)
+    println("----")
+
     println("Hello")
 }
