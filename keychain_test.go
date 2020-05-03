@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/stretchr/testify/assert"
 	"log"
 	"servercat.app/golib/golib"
 	"strings"
 	"testing"
-	"github.com/stretchr/testify/assert"
 	"time"
 )
 
@@ -18,10 +18,9 @@ h//Uafie4x9xKmI5iMJpr5K5+evVQan0xwShHigc/S0WUmPWFtQCRvZYmyUzajVqHEz1eu
 cvV8fHxUzpJ7dPKhezgIYuzaatOJmoGeUMTVY=
 -----END OPENSSH PRIVATE KEY-----`
 
-
 func TestGenerateRSAKey(t *testing.T) {
 	keyPair, err := golib.GenerateRsaPrivateKey()
-	if err != nil  {
+	if err != nil {
 		assert.Error(t, err)
 	}
 
@@ -32,7 +31,7 @@ func TestGenerateRSAKey(t *testing.T) {
 
 func TestGenerateEd25519Key(t *testing.T) {
 	keyPair, err := golib.GenerateEd25519PrivateKey()
-	if err != nil  {
+	if err != nil {
 		assert.Error(t, err)
 	}
 
@@ -43,7 +42,7 @@ func TestGenerateEd25519Key(t *testing.T) {
 
 func TestDetectRsaKey(t *testing.T) {
 	keyPair, err := golib.GenerateRsaPrivateKey()
-	if err != nil  {
+	if err != nil {
 		assert.Error(t, err)
 	}
 
@@ -55,7 +54,7 @@ func TestDetectRsaKey(t *testing.T) {
 
 func TestDetectEdKey(t *testing.T) {
 	keyPair, err := golib.GenerateEd25519PrivateKey()
-	if err != nil  {
+	if err != nil {
 		assert.Error(t, err)
 	}
 
@@ -64,7 +63,6 @@ func TestDetectEdKey(t *testing.T) {
 	assert.Equal(t, true, info.Valid)
 	assert.Equal(t, "ed25519", info.CipherName)
 }
-
 
 func TestSSHPublicKey(t *testing.T) {
 	sshPubKey, err := golib.GenerateSSHAuthorizedKey(ed25519PrivateKey, "test")
@@ -79,7 +77,6 @@ func TestSSHPublicKey(t *testing.T) {
 
 	assert.False(t, strings.HasSuffix(sshPubKey, "\n"), "has trailing blank")
 }
-
 
 func TestKeyDetect(t *testing.T) {
 	info := golib.DetectKey(ed25519PrivateKey, "invalid_pass")
