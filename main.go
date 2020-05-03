@@ -4,9 +4,15 @@ import "servercat.app/golib/golib"
 
 func main() {
     //golib.Parse()
-    pk, pubKey := golib.GenerateEd25519PrivateKey()
-    println(pk)
-    println(pubKey)
+    key, err := golib.GenerateEd25519PrivateKey()
+    if err != nil {
+        panic(err)
+    }
+    println("----")
+    println(key.PublicKey)
+    println("----")
+    println(key.PrivateKey)
+    println("----")
 
     println("Hello")
 }

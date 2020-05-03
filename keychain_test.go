@@ -1,10 +1,12 @@
 package main
 
 import (
+	"log"
 	"servercat.app/golib/golib"
 	"strings"
 	"testing"
 	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 const ed25519PrivateKey = `-----BEGIN OPENSSH PRIVATE KEY-----
@@ -17,6 +19,15 @@ cvV8fHxUzpJ7dPKhezgIYuzaatOJmoGeUMTVY=
 -----END OPENSSH PRIVATE KEY-----`
 
 
+func TestRSAPublicKey(t *testing.T) {
+	keyPair, err := golib.GenerateRsaPrivateKey()
+	if err != nil  {
+		assert.Error(t, err)
+	}
+
+	assert.NotNil(t, keyPair, "should not fail")
+}
+
 func TestSSHPublicKey(t *testing.T) {
 	sshPubKey, err := golib.GenerateSSHAuthorizedKey(ed25519PrivateKey, "test")
 
@@ -27,11 +38,18 @@ func TestSSHPublicKey(t *testing.T) {
 	if !strings.HasPrefix(sshPubKey, "ssh-ed25519 ") {
 		t.Errorf("SSH Authorized Key must startswith ssh: %s", sshPubKey)
 	}
+
+	assert.False(t, strings.HasSuffix(sshPubKey, "\n"), "has trailing blank")
 }
 
 
 func TestKeyDetect(t *testing.T) {
-	info := golib.DetectKey(ed25519PrivateKey, "test")
+	info := golib.DetectKey(ed25519PrivateKey, "invalid_pass")
+	assert.Equal(t, false, info.Valid)
+
+	start := time.Now()
+	info = golib.DetectKey(ed25519PrivateKey, "test")
+	log.Printf("Binomial took %s", time.Since(start))
 
 	assert.Equal(t, "", info.Error, "they should be equal")
 	assert.Equal(t, true, info.Valid, "they should be equal")

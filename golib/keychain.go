@@ -150,6 +150,33 @@ type HasPublicKey interface {
 	Public() crypto.PublicKey
 }
 
+func GenerateRsaPrivateKey() (*KeyPair, error) {
+	priKey, err := rsa.GenerateKey(rand.Reader, 2048)
+
+	if err != nil {
+		return nil, err
+	}
+
+	pk, err := sshkeys.Marshal(priKey, &sshkeys.MarshalOptions{
+		Passphrase: nil,
+		Format:     sshkeys.FormatClassicPEM,
+	})
+
+	publicRsaKey, err := ssh.NewPublicKey(&priKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
+
+	log.Println("Public key generated", string(pubKeyBytes))
+	return &KeyPair{
+		PublicKey:  strings.TrimSpace(string(pubKeyBytes)),
+		PrivateKey: strings.TrimSpace(string(pk)),
+	}, nil
+}
+
+
 func GenerateEd25519PrivateKey() (*KeyPair, error) {
 	pubKey, priKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
